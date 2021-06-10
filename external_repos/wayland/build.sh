@@ -2,18 +2,20 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-ARCH_LONG=${ARCH}-linux-android${ANDROID_LEVEL}
+ARCH_LONG=${ANDROID_TARGET}${ANDROID_API}
+ARTIFACTS=${SCRIPT_DIR}/../../artifacts/${ANDROID_ARCH}
+PKGCONFIG_DIR=${ARTIFACTS}/lib/pkgconfig
 
 # Make our own pkgconfig directory to point dependencies
 # to the right places
-PKGCONFIG_DIR=${SCRIPT_DIR}/generated/pkgconfig-dir
-rm -r ${PKGCONFIG_DIR}
-mkdir -p ${PKGCONFIG_DIR}
+# PKGCONFIG_DIR=${SCRIPT_DIR}/generated/pkgconfig-dir
+# rm -r ${PKGCONFIG_DIR}
+# mkdir -p ${PKGCONFIG_DIR}
 # cat > generated/pkgconfig-dir/wayland-server.pc <<- EOF
 # prefix=${SCRIPT_DIR}/termux-x11/app/src/main/jni/prebuilt/
 # exec_prefix=\${prefix}
 # includedir=\${prefix}/include
-# libdir=\${exec_prefix}/${ARCH_SHORT}
+# libdir=\${exec_prefix}/${ANDROID_ARCH}
 
 # Name: wayland-server
 # Description: Wayland protocol server library
@@ -42,7 +44,7 @@ needs_exe_wrapper = false
 [host_machine]
 system = 'android-arm'
 cpu_family = 'arm'
-cpu = '${ARCH_SHORT}'
+cpu = '${ANDROID_ARCH}'
 endian = 'little'
 EOF
 

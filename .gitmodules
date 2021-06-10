@@ -4,3 +4,6 @@
 [submodule "external_repos/libffi/libffi"]
 	path = external_repos/libffi/libffi
 	url = https://github.com/libffi/libffi.git
+[submodule "external_repos/expat/libexpat"]
+	path = external_repos/expat/libexpat
+	url = https://github.com/libexpat/libexpat.git
