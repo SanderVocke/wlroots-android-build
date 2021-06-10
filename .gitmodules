@@ -1,0 +1,6 @@
+[submodule "external_repos/wayland/wayland"]
+	path = external_repos/wayland/wayland
+	url = https://github.com/wayland-project/wayland.git
+[submodule "external_repos/libffi/libffi"]
+	path = external_repos/libffi/libffi
+	url = https://github.com/libffi/libffi.git
