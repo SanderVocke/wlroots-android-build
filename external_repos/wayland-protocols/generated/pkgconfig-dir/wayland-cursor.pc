@@ -1,0 +1,10 @@
+prefix=/home/sander/dev/wlroots-android-build/external_repos/wayland/../../artifacts/aarch64
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: Wayland Cursor
+Description: Wayland cursor helper library
+Version: 1.19.0
+Requires.private: wayland-client
+Libs: -L${libdir} -lwayland-cursor
+Cflags: -I${includedir}

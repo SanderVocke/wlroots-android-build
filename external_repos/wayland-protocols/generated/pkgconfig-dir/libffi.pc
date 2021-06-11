@@ -1,6 +1,6 @@
-prefix=/usr
+prefix=/home/sander/dev/wlroots-android-build/external_repos/libffi/../../artifacts//aarch64
 exec_prefix=${prefix}
-libdir=${prefix}/lib
+libdir=${exec_prefix}/lib
 toolexeclibdir=${libdir}
 includedir=${prefix}/include
 

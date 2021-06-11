@@ -1,0 +1,19 @@
+#
+# Author: Lasse Collin
+#
+# This file has been put into the public domain.
+# You can do whatever you want with this file.
+#
+
+prefix=/home/sander/dev/wlroots-android-build/external_repos/liblzma/../../artifacts//aarch64
+exec_prefix=/home/sander/dev/wlroots-android-build/external_repos/liblzma/../../artifacts//aarch64
+libdir=/home/sander/dev/wlroots-android-build/external_repos/liblzma/../../artifacts//aarch64/lib
+includedir=/home/sander/dev/wlroots-android-build/external_repos/liblzma/../../artifacts//aarch64/include
+
+Name: liblzma
+Description: General purpose data compression library
+URL: https://tukaani.org/xz/
+Version: 5.2.5
+Cflags: -I${includedir}
+Libs: -L${libdir} -llzma
+Libs.private: -pthread 

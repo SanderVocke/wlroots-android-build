@@ -4,27 +4,26 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 ARCH_LONG=${ANDROID_TARGET}${ANDROID_API}
 ARTIFACTS=${SCRIPT_DIR}/../../artifacts/${ANDROID_ARCH}
-PKGCONFIG_DIR=${ARTIFACTS}/lib/pkgconfig
+PREBUILT=${SCRIPT_DIR}/../../prebuilt/${ANDROID_ARCH}
 
-# Make our own pkgconfig directory to point dependencies
-# to the right places
-# PKGCONFIG_DIR=${SCRIPT_DIR}/generated/pkgconfig-dir
-# rm -r ${PKGCONFIG_DIR}
-# mkdir -p ${PKGCONFIG_DIR}
-# cat > generated/pkgconfig-dir/wayland-server.pc <<- EOF
-# prefix=${SCRIPT_DIR}/termux-x11/app/src/main/jni/prebuilt/
-# exec_prefix=\${prefix}
-# includedir=\${prefix}/include
-# libdir=\${exec_prefix}/${ANDROID_ARCH}
+# We have to patch the pkgconfig files to prepend our path
+# to their prefix.
+# Unfortunately there is no way to set --define-prefix as a pkgconfig argument
+# via Meson, which would be a lot easier.
+BASE_PKGCONFIG_DIR=../../prebuilt/${ANDROID_ARCH}/usr/lib/pkgconfig
+PKGCONFIG_DIR=${SCRIPT_DIR}/generated/pkgconfig-dir
+mkdir -p ${PKGCONFIG_DIR}
+ESCAPED_PREBUILT="${PREBUILT//\//\\/}"
+for f in ${BASE_PKGCONFIG_DIR}/*.pc; do
+    sed "s/^prefix=.*/prefix=${ESCAPED_PREBUILT}\/usr/g" ${BASE_PKGCONFIG_DIR}/$(basename ${f}) > ${PKGCONFIG_DIR}/$(basename ${f})
+done
 
-# Name: wayland-server
-# Description: Wayland protocol server library
-# Version: 1.19
-# Cflags: -I\${includedir}/
-# Libs: -L\${libdir} -lwayland-server
-# EOF
+# Also include the .pc files from any packages we already built into
+# the artifacts folder.
+cp ${ARTIFACTS}/lib/pkgconfig/*.pc ${PKGCONFIG_DIR}
 
 # Replace paths with the ones to your NDK tools
+mkdir -p generated
 cat > generated/meson.crossfile <<- EOF
 [binaries]
 c = '$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/${ARCH_LONG}-clang'
@@ -50,6 +49,8 @@ EOF
 
 pushd wayland
 mkdir -p build
-meson --cross-file=${SCRIPT_DIR}/generated/meson.crossfile build/
-ninja -C build/
+meson --cross-file=${SCRIPT_DIR}/generated/meson.crossfile -Dprefix=${ARTIFACTS} ../build/
 popd
+
+ninja -C build/
+ninja -C build/ install

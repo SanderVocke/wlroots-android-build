@@ -1,0 +1,882 @@
+diff --git a/backend/backend.c b/backend/backend.c
+index 2c76d989..53aceaa9 100644
+--- a/backend/backend.c
++++ b/backend/backend.c
+@@ -1,20 +1,22 @@
+ #define _POSIX_C_SOURCE 200809L
+ #include <assert.h>
+ #include <errno.h>
+-#include <libinput.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
+ #include <wayland-server.h>
+-#include <wlr/backend/drm.h>
++#include <wlr/config.h>
+ #include <wlr/backend/headless.h>
+ #include <wlr/backend/interface.h>
++#if WLR_HAS_DRM_BACKEND
++#include <libinput.h>
++#include <wlr/backend/drm.h>
+ #include <wlr/backend/libinput.h>
+ #include <wlr/backend/multi.h>
++#endif
+ #include <wlr/backend/noop.h>
+ #include <wlr/backend/session.h>
+ #include <wlr/backend/wayland.h>
+-#include <wlr/config.h>
+ #include <wlr/util/log.h>
+ #include "backend/multi.h"
+ 
+@@ -183,6 +185,7 @@ static struct wlr_backend *attempt_noop_backend(struct wl_display *display) {
+ 	return backend;
+ }
+ 
++#if WLR_HAS_DRM_BACKEND
+ static struct wlr_backend *attempt_drm_backend(struct wl_display *display,
+ 		struct wlr_backend *backend, struct wlr_session *session,
+ 		wlr_renderer_create_func_t create_renderer_func) {
+@@ -208,6 +211,7 @@ static struct wlr_backend *attempt_drm_backend(struct wl_display *display,
+ 
+ 	return primary_drm;
+ }
++#endif
+ 
+ static struct wlr_backend *attempt_backend_by_name(struct wl_display *display,
+ 		struct wlr_backend *backend, struct wlr_session **session,
+@@ -226,6 +230,7 @@ static struct wlr_backend *attempt_backend_by_name(struct wl_display *display,
+ #endif
+ 	} else if (strcmp(name, "noop") == 0) {
+ 		return attempt_noop_backend(display);
++#if WLR_HAS_DRM_BACKEND
+ 	} else if (strcmp(name, "drm") == 0 || strcmp(name, "libinput") == 0) {
+ 		// DRM and libinput need a session
+ 		if (!*session) {
+@@ -241,6 +246,7 @@ static struct wlr_backend *attempt_backend_by_name(struct wl_display *display,
+ 		} else {
+ 			return attempt_drm_backend(display, backend, *session, create_renderer_func);
+ 		}
++#endif
+ 	}
+ 
+ 	wlr_log(WLR_ERROR, "unrecognized backend '%s'", name);
+@@ -315,6 +321,7 @@ struct wlr_backend *wlr_backend_autocreate(struct wl_display *display,
+ 	}
+ #endif
+ 
++#if WLR_HAS_DRM_BACKEND
+ 	// Attempt DRM+libinput
+ 	multi->session = wlr_session_create(display);
+ 	if (!multi->session) {
+@@ -342,6 +349,7 @@ struct wlr_backend *wlr_backend_autocreate(struct wl_display *display,
+ 		wlr_backend_destroy(backend);
+ 		return NULL;
+ 	}
++#endif
+ 
+ 	return backend;
+ }
+diff --git a/backend/meson.build b/backend/meson.build
+index ca85ad31..cda31074 100644
+--- a/backend/meson.build
++++ b/backend/meson.build
+@@ -1,28 +1,12 @@
+ backend_parts = []
+ backend_files = files(
+ 	'backend.c',
+-	'drm/atomic.c',
+-	'drm/backend.c',
+-	'drm/drm.c',
+-	'drm/legacy.c',
+-	'drm/properties.c',
+-	'drm/renderer.c',
+-	'drm/util.c',
+ 	'headless/backend.c',
+ 	'headless/input_device.c',
+ 	'headless/output.c',
+-	'libinput/backend.c',
+-	'libinput/events.c',
+-	'libinput/keyboard.c',
+-	'libinput/pointer.c',
+-	'libinput/switch.c',
+-	'libinput/tablet_pad.c',
+-	'libinput/tablet_tool.c',
+-	'libinput/touch.c',
+ 	'multi/backend.c',
+ 	'noop/backend.c',
+ 	'noop/output.c',
+-	'session/direct-ipc.c',
+ 	'session/noop.c',
+ 	'session/session.c',
+ 	'wayland/backend.c',
+@@ -31,10 +15,7 @@ backend_files = files(
+ )
+ 
+ backend_deps = [
+-	drm,
+ 	egl,
+-	gbm,
+-	libinput,
+ 	pixman,
+ 	xkbcommon,
+ 	wayland_server,
+@@ -44,8 +25,6 @@ backend_deps = [
+ 
+ if host_machine.system().startswith('freebsd')
+ 	backend_files += files('session/direct-freebsd.c')
+-else
+-	backend_files += files('session/direct.c')
+ endif
+ 
+ if logind.found()
+@@ -53,6 +32,35 @@ if logind.found()
+ 	backend_deps += logind
+ endif
+ 
++if udev.found() and libinput.found() and gbm.found()
++	backend_files += files(
++	'session/direct.c',
++	'session/direct-ipc.c',
++	'drm/atomic.c',
++	'drm/backend.c',
++	'drm/drm.c',
++	'drm/legacy.c',
++	'drm/properties.c',
++	'drm/renderer.c',
++	'drm/util.c',
++	'libinput/backend.c',
++	'libinput/events.c',
++	'libinput/keyboard.c',
++	'libinput/pointer.c',
++	'libinput/switch.c',
++	'libinput/tablet_pad.c',
++	'libinput/tablet_tool.c',
++	'libinput/touch.c',
++	)
++
++	backend_deps += [
++		drm,
++		gbm,
++		libinput
++	]
++	conf_data.set10('WLR_HAS_DRM_BACKEND', true)
++endif
++
+ if freerdp.found() and winpr2.found()
+ 	backend_files += files(
+ 		'rdp/backend.c',
+diff --git a/backend/session/session.c b/backend/session/session.c
+index 90fcfed6..b6a9294c 100644
+--- a/backend/session/session.c
++++ b/backend/session/session.c
+@@ -1,6 +1,5 @@
+ #define _POSIX_C_SOURCE 200809L
+ #include <assert.h>
+-#include <libudev.h>
+ #include <stddef.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -10,9 +9,12 @@
+ #include <wlr/backend/session.h>
+ #include <wlr/backend/session/interface.h>
+ #include <wlr/config.h>
+-#include <wlr/util/log.h>
++#if WLR_HAS_DRM_BACKEND
++#include <libudev.h>
+ #include <xf86drm.h>
+ #include <xf86drmMode.h>
++#endif
++#include <wlr/util/log.h>
+ #include "util/signal.h"
+ 
+ extern const struct session_impl session_logind;
+@@ -23,10 +25,13 @@ static const struct session_impl *impls[] = {
+ #if WLR_HAS_SYSTEMD || WLR_HAS_ELOGIND
+ 	&session_logind,
+ #endif
++#if WLR_HAS_DRM_BACKEND || defined(__FreeBSD__)
+ 	&session_direct,
++#endif
+ 	NULL,
+ };
+ 
++#if WLR_HAS_DRM_BACKEND
+ static int udev_event(int fd, uint32_t mask, void *data) {
+ 	struct wlr_session *session = data;
+ 
+@@ -58,6 +63,7 @@ out:
+ 	udev_device_unref(udev_dev);
+ 	return 1;
+ }
++#endif
+ 
+ static void handle_display_destroy(struct wl_listener *listener, void *data) {
+ 	struct wlr_session *session =
+@@ -78,7 +84,11 @@ struct wlr_session *wlr_session_create(struct wl_display *disp) {
+ 			wlr_log(WLR_ERROR, "wlroots is not compiled with logind support");
+ #endif
+ 		} else if (strcmp(env_wlr_session, "direct") == 0) {
++#if WLR_HAS_DRM_BACKEND || defined(__FreeBSD__)
+ 			session = session_direct.create(disp);
++#else
++			wlr_log(WLR_ERROR, "wlroots is not compiled with direct support");
++#endif
+ 		} else if (strcmp(env_wlr_session, "noop") == 0) {
+ 			session = session_noop.create(disp);
+ 		} else {
+@@ -102,6 +112,7 @@ struct wlr_session *wlr_session_create(struct wl_display *disp) {
+ 	wl_signal_init(&session->events.destroy);
+ 	wl_list_init(&session->devices);
+ 
++#if WLR_HAS_DRM_BACKEND
+ 	session->udev = udev_new();
+ 	if (!session->udev) {
+ 		wlr_log_errno(WLR_ERROR, "Failed to create udev context");
+@@ -126,12 +137,14 @@ struct wlr_session *wlr_session_create(struct wl_display *disp) {
+ 		wlr_log_errno(WLR_ERROR, "Failed to create udev event source");
+ 		goto error_mon;
+ 	}
++#endif
+ 
+ 	session->display_destroy.notify = handle_display_destroy;
+ 	wl_display_add_destroy_listener(disp, &session->display_destroy);
+ 
+ 	return session;
+ 
++#if WLR_HAS_DRM_BACKEND
+ error_mon:
+ 	udev_monitor_unref(session->mon);
+ error_udev:
+@@ -139,6 +152,7 @@ error_udev:
+ error_session:
+ 	session->impl->destroy(session);
+ 	return NULL;
++#endif
+ }
+ 
+ void wlr_session_destroy(struct wlr_session *session) {
+@@ -149,9 +163,11 @@ void wlr_session_destroy(struct wlr_session *session) {
+ 	wlr_signal_emit_safe(&session->events.destroy, session);
+ 	wl_list_remove(&session->display_destroy.link);
+ 
++	#if WLR_HAS_DRM_BACKEND
+ 	wl_event_source_remove(session->udev_event);
+ 	udev_monitor_unref(session->mon);
+ 	udev_unref(session->udev);
++	#endif
+ 
+ 	session->impl->destroy(session);
+ }
+@@ -222,6 +238,7 @@ bool wlr_session_change_vt(struct wlr_session *session, unsigned vt) {
+ 	return session->impl->change_vt(session, vt);
+ }
+ 
++#if WLR_HAS_DRM_BACKEND
+ /* Tests if 'path' is KMS compatible by trying to open it.
+  * It leaves the open device in *fd_out it it succeeds.
+  */
+@@ -276,21 +293,25 @@ static size_t explicit_find_gpus(struct wlr_session *session,
+ 	free(gpus);
+ 	return i;
+ }
++#endif
+ 
+ /* Tries to find the primary GPU by checking for the "boot_vga" attribute.
+  * If it's not found, it returns the first valid GPU it finds.
+  */
+ size_t wlr_session_find_gpus(struct wlr_session *session,
+ 		size_t ret_len, int *ret) {
++#if WLR_HAS_DRM_BACKEND
+ 	const char *explicit = getenv("WLR_DRM_DEVICES");
+ 	if (explicit) {
+ 		return explicit_find_gpus(session, ret_len, ret, explicit);
+ 	}
++#endif
+ 
+ #ifdef __FreeBSD__
+ 	// XXX: libudev-devd does not return any GPUs (yet?)
+ 	return explicit_find_gpus(session, ret_len, ret, "/dev/drm/0");
+ #else
++#if WLR_HAS_DRM_BACKEND
+ 
+ 	struct udev_enumerate *en = udev_enumerate_new(session->udev);
+ 	if (!en) {
+@@ -359,5 +380,8 @@ size_t wlr_session_find_gpus(struct wlr_session *session,
+ 	udev_enumerate_unref(en);
+ 
+ 	return i;
+-#endif
++#else
++	return 0;
++#endif // WLR_HAS_DRM_BACKEND
++#endif // __FreeBSD__
+ }
+diff --git a/examples/meson.build b/examples/meson.build
+index 8d38b888..bb85430a 100644
+--- a/examples/meson.build
++++ b/examples/meson.build
+@@ -57,10 +57,10 @@ examples = {
+ 		'src': 'screenshot.c',
+ 		'dep': [wayland_client, wlr_protos, rt],
+ 	},
+-	'idle': {
+-		'src': 'idle.c',
+-		'dep': [wayland_client, wlr_protos, threads],
+-	},
++#	'idle': {
++#		'src': 'idle.c',
++#		'dep': [wayland_client, wlr_protos, threads],
++#	},
+ 	'idle-inhibit': {
+ 		'src': 'idle-inhibit.c',
+ 		'dep': [wayland_client, wlr_protos, wlroots],
+diff --git a/include/wlr/backend/session.h b/include/wlr/backend/session.h
+index 7b26f34c..1a596ae9 100644
+--- a/include/wlr/backend/session.h
++++ b/include/wlr/backend/session.h
+@@ -1,7 +1,10 @@
+ #ifndef WLR_BACKEND_SESSION_H
+ #define WLR_BACKEND_SESSION_H
+ 
++#include <wlr/config.h>
++#if WLR_HAS_DRM_BACKEND
+ #include <libudev.h>
++#endif
+ #include <stdbool.h>
+ #include <sys/types.h>
+ #include <wayland-server.h>
+@@ -32,10 +35,11 @@ struct wlr_session {
+ 	unsigned vtnr;
+ 	char seat[256];
+ 
++#if WLR_HAS_DRM_BACKEND
+ 	struct udev *udev;
+ 	struct udev_monitor *mon;
+ 	struct wl_event_source *udev_event;
+-
++#endif
+ 	struct wl_list devices;
+ 
+ 	struct wl_listener display_destroy;
+diff --git a/include/wlr/config.h.in b/include/wlr/config.h.in
+index 8d86b78d..397c1247 100644
+--- a/include/wlr/config.h.in
++++ b/include/wlr/config.h.in
+@@ -8,6 +8,7 @@
+ 
+ #mesondefine WLR_HAS_X11_BACKEND
+ #mesondefine WLR_HAS_RDP_BACKEND
++#mesondefine WLR_HAS_DRM_BACKEND
+ 
+ #mesondefine WLR_HAS_XWAYLAND
+ 
+diff --git a/meson.build b/meson.build
+index dc8fbddc..9a6498fe 100644
+--- a/meson.build
++++ b/meson.build
+@@ -3,7 +3,7 @@ project(
+ 	'c',
+ 	version: '0.6.0',
+ 	license: 'MIT',
+-	meson_version: '>=0.48.0',
++	meson_version: '>=0.47.0',
+ 	default_options: [
+ 		'c_std=c11',
+ 		'warning_level=2',
+@@ -47,6 +47,7 @@ conf_data.set10('WLR_HAS_SYSTEMD', false)
+ conf_data.set10('WLR_HAS_ELOGIND', false)
+ conf_data.set10('WLR_HAS_RDP_BACKEND', false)
+ conf_data.set10('WLR_HAS_X11_BACKEND', false)
++conf_data.set10('WLR_HAS_DRM_BACKEND', false)
+ conf_data.set10('WLR_HAS_XWAYLAND', false)
+ conf_data.set10('WLR_HAS_XCB_ERRORS', false)
+ conf_data.set10('WLR_HAS_XCB_ICCCM', false)
+@@ -72,15 +73,15 @@ freerdp        = dependency('freerdp2', required: get_option('freerdp'))
+ winpr2         = dependency('winpr2', required: get_option('freerdp'))
+ glesv2         = dependency('glesv2')
+ drm            = dependency('libdrm', version: '>=2.4.95')
+-gbm            = dependency('gbm', version: '>=17.1.0')
+-libinput       = dependency('libinput', version: '>=1.9.0')
++gbm            = dependency('gbm', version: '>=17.1.0', required: get_option('drm-backend'))
++libinput       = dependency('libinput', version: '>=1.9.0', required: get_option('drm-backend'))
+ xkbcommon      = dependency('xkbcommon')
+-udev           = dependency('libudev')
++udev           = dependency('libudev', required: get_option('drm-backend'))
+ pixman         = dependency('pixman-1')
+ libcap         = dependency('libcap', required: get_option('libcap'))
+ logind         = dependency('lib' + get_option('logind-provider'), required: get_option('logind'), version: '>=237')
+ math           = cc.find_library('m')
+-rt             = cc.find_library('rt')
++rt             = cc.find_library('rt', required: false)
+ 
+ wlr_parts = []
+ wlr_deps = []
+diff --git a/meson_options.txt b/meson_options.txt
+index 5d322b0c..502d490e 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -6,5 +6,6 @@ option('xcb-errors', type: 'feature', value: 'auto', description: 'Use xcb-error
+ option('xcb-icccm', type: 'feature', value: 'auto', description: 'Use xcb-icccm util library')
+ option('xwayland', type: 'feature', value: 'auto', yield: true, description: 'Enable support for X11 applications')
+ option('x11-backend', type: 'feature', value: 'auto', description: 'Enable X11 backend')
++option('drm-backend', type: 'feature', value: 'auto', description: 'Enable DRM backend')
+ option('rootston', type: 'boolean', value: true, description: 'Build the rootston example compositor')
+ option('examples', type: 'boolean', value: true, description: 'Build example applications')
+diff --git a/render/egl.c b/render/egl.c
+index 22859b16..3a8e643b 100644
+--- a/render/egl.c
++++ b/render/egl.c
+@@ -143,12 +143,16 @@ bool wlr_egl_init(struct wlr_egl *egl, EGLenum platform, void *remote_display,
+ 		goto error;
+ 	}
+ 
++#ifndef __ANDROID__
+ 	if (platform == EGL_PLATFORM_SURFACELESS_MESA) {
+ 		assert(remote_display == NULL);
+ 		egl->display = eglGetPlatformDisplayEXT(platform, EGL_DEFAULT_DISPLAY, NULL);
+ 	} else {
+ 		egl->display = eglGetPlatformDisplayEXT(platform, remote_display, NULL);
+ 	}
++#else
++	egl->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
++#endif
+ 	if (egl->display == EGL_NO_DISPLAY) {
+ 		wlr_log(WLR_ERROR, "Failed to create EGL display");
+ 		goto error;
+@@ -190,18 +194,28 @@ bool wlr_egl_init(struct wlr_egl *egl, EGLenum platform, void *remote_display,
+ 		check_egl_ext(egl->exts_str, "EGL_EXT_image_dma_buf_import");
+ 	egl->exts.image_dmabuf_import_modifiers_ext =
+ 		check_egl_ext(egl->exts_str, "EGL_EXT_image_dma_buf_import_modifiers")
+-		&& eglQueryDmaBufFormatsEXT && eglQueryDmaBufModifiersEXT;
++#ifndef __ANDROID__
++		&& eglQueryDmaBufFormatsEXT && eglQueryDmaBufModifiersEXT
++#endif
++	;
+ 
+ 	egl->exts.image_dma_buf_export_mesa =
+ 		check_egl_ext(egl->exts_str, "EGL_MESA_image_dma_buf_export") &&
++#ifndef __ANDROID__
+ 		eglExportDMABUFImageQueryMESA && eglExportDMABUFImageMESA;
++#else
++		true;
++#endif
+ 
+ 	init_dmabuf_formats(egl);
+ 
+ 	egl->exts.bind_wayland_display_wl =
+ 		check_egl_ext(egl->exts_str, "EGL_WL_bind_wayland_display")
++		#ifndef __ANDROID__
+ 		&& eglBindWaylandDisplayWL && eglUnbindWaylandDisplayWL
+-		&& eglQueryWaylandBufferWL;
++		&& eglQueryWaylandBufferWL
++		#endif // __ANDROID__
++		;
+ 
+ 	bool ext_context_priority =
+ 		check_egl_ext(egl->exts_str, "EGL_IMG_context_priority");
+@@ -270,7 +284,9 @@ void wlr_egl_finish(struct wlr_egl *egl) {
+ 	eglMakeCurrent(egl->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+ 	if (egl->wl_display) {
+ 		assert(egl->exts.bind_wayland_display_wl);
++		#ifndef __ANDROID__
+ 		eglUnbindWaylandDisplayWL(egl->display, egl->wl_display);
++		#endif // __ANDROID__
+ 	}
+ 
+ 	eglDestroyContext(egl->display, egl->context);
+@@ -282,16 +298,16 @@ bool wlr_egl_bind_display(struct wlr_egl *egl, struct wl_display *local_display)
+ 	if (!egl->exts.bind_wayland_display_wl) {
+ 		return false;
+ 	}
+-
++#ifndef __ANDROID__
+ 	if (eglBindWaylandDisplayWL(egl->display, local_display)) {
+ 		egl->wl_display = local_display;
+ 		return true;
+ 	}
+-
++#endif // __ANDROID__
+ 	return false;
+ }
+ 
+-bool wlr_egl_destroy_image(struct wlr_egl *egl, EGLImage image) {
++bool wlr_egl_destroy_image(struct wlr_egl *egl, EGLImageKHR image) {
+ 	if (!egl->exts.image_base_khr) {
+ 		return false;
+ 	}
+@@ -302,8 +318,12 @@ bool wlr_egl_destroy_image(struct wlr_egl *egl, EGLImage image) {
+ }
+ 
+ EGLSurface wlr_egl_create_surface(struct wlr_egl *egl, void *window) {
++#ifndef __ANDROID__
+ 	assert(eglCreatePlatformWindowSurfaceEXT);
+ 	EGLSurface surf = eglCreatePlatformWindowSurfaceEXT(egl->display,
++#else
++	EGLSurface surf = eglCreateWindowSurface(egl->display,
++#endif
+ 		egl->config, window, NULL);
+ 	if (surf == EGL_NO_SURFACE) {
+ 		wlr_log(WLR_ERROR, "Failed to create EGL surface");
+@@ -406,6 +426,7 @@ bool wlr_egl_swap_buffers(struct wlr_egl *egl, EGLSurface surface,
+ EGLImageKHR wlr_egl_create_image_from_wl_drm(struct wlr_egl *egl,
+ 		struct wl_resource *data, EGLint *fmt, int *width, int *height,
+ 		bool *inverted_y) {
++	#ifndef __ANDROID__
+ 	if (!egl->exts.bind_wayland_display_wl || !egl->exts.image_base_khr) {
+ 		return NULL;
+ 	}
+@@ -431,6 +452,9 @@ EGLImageKHR wlr_egl_create_image_from_wl_drm(struct wlr_egl *egl,
+ 	};
+ 	return eglCreateImageKHR(egl->display, egl->context, EGL_WAYLAND_BUFFER_WL,
+ 		data, attribs);
++	#else
++	return NULL;
++	#endif // __ANDROID__
+ }
+ 
+ EGLImageKHR wlr_egl_create_image_from_dmabuf(struct wlr_egl *egl,
+@@ -520,6 +544,7 @@ EGLImageKHR wlr_egl_create_image_from_dmabuf(struct wlr_egl *egl,
+ }
+ 
+ static int get_egl_dmabuf_formats(struct wlr_egl *egl, int **formats) {
++#ifndef __ANDROID__
+ 	if (!egl->exts.image_dmabuf_import_ext) {
+ 		wlr_log(WLR_DEBUG, "DMA-BUF import extension not present");
+ 		return -1;
+@@ -531,6 +556,7 @@ static int get_egl_dmabuf_formats(struct wlr_egl *egl, int **formats) {
+ 	// Just a guess but better than not supporting dmabufs at all,
+ 	// given that the modifiers extension isn't supported everywhere.
+ 	if (!egl->exts.image_dmabuf_import_modifiers_ext) {
++#endif
+ 		static const int fallback_formats[] = {
+ 			DRM_FORMAT_ARGB8888,
+ 			DRM_FORMAT_XRGB8888,
+@@ -546,8 +572,8 @@ static int get_egl_dmabuf_formats(struct wlr_egl *egl, int **formats) {
+ 
+ 		memcpy(*formats, fallback_formats, num * sizeof(**formats));
+ 		return num;
++#ifndef __ANDROID__
+ 	}
+-
+ 	EGLint num;
+ 	if (!eglQueryDmaBufFormatsEXT(egl->display, 0, NULL, &num)) {
+ 		wlr_log(WLR_ERROR, "Failed to query number of dmabuf formats");
+@@ -566,10 +592,12 @@ static int get_egl_dmabuf_formats(struct wlr_egl *egl, int **formats) {
+ 		return -1;
+ 	}
+ 	return num;
++#endif
+ }
+ 
+ static int get_egl_dmabuf_modifiers(struct wlr_egl *egl, int format,
+ 		uint64_t **modifiers) {
++#ifndef __ANDROID__
+ 	if (!egl->exts.image_dmabuf_import_ext) {
+ 		wlr_log(WLR_DEBUG, "DMA-BUF extension not present");
+ 		return -1;
+@@ -600,6 +628,10 @@ static int get_egl_dmabuf_modifiers(struct wlr_egl *egl, int format,
+ 		return -1;
+ 	}
+ 	return num;
++#else
++	*modifiers = NULL;
++	return 0;
++#endif
+ }
+ 
+ const struct wlr_drm_format_set *wlr_egl_get_dmabuf_formats(struct wlr_egl *egl) {
+@@ -611,6 +643,7 @@ bool wlr_egl_export_image_to_dmabuf(struct wlr_egl *egl, EGLImageKHR image,
+ 		struct wlr_dmabuf_attributes *attribs) {
+ 	memset(attribs, 0, sizeof(struct wlr_dmabuf_attributes));
+ 
++#ifndef __ANDROID__
+ 	if (!egl->exts.image_dma_buf_export_mesa) {
+ 		return false;
+ 	}
+@@ -630,6 +663,7 @@ bool wlr_egl_export_image_to_dmabuf(struct wlr_egl *egl, EGLImageKHR image,
+ 			(EGLint *)attribs->stride, (EGLint *)attribs->offset)) {
+ 		return false;
+ 	}
++#endif // __ANDROID__
+ 
+ 	attribs->width = width;
+ 	attribs->height = height;
+diff --git a/render/glapi.txt b/render/glapi.txt
+index b1166f27..dd7e8736 100644
+--- a/render/glapi.txt
++++ b/render/glapi.txt
+@@ -1,17 +1,8 @@
+-eglGetPlatformDisplayEXT
+-eglCreatePlatformWindowSurfaceEXT
+ -eglCreateImageKHR
+ -eglDestroyImageKHR
+--eglQueryWaylandBufferWL
+--eglBindWaylandDisplayWL
+--eglUnbindWaylandDisplayWL
+ -glEGLImageTargetTexture2DOES
+ -eglSwapBuffersWithDamageEXT
+ -eglSwapBuffersWithDamageKHR
+--eglQueryDmaBufFormatsEXT
+--eglQueryDmaBufModifiersEXT
+--eglExportDMABUFImageQueryMESA
+--eglExportDMABUFImageMESA
+ -eglDebugMessageControlKHR
+ -glDebugMessageCallbackKHR
+ -glDebugMessageControlKHR
+diff --git a/render/gles2/renderer.c b/render/gles2/renderer.c
+index dce1f162..7c69b2f6 100644
+--- a/render/gles2/renderer.c
++++ b/render/gles2/renderer.c
+@@ -223,8 +223,8 @@ static bool gles2_format_supported(struct wlr_renderer *wlr_renderer,
+ 
+ static bool gles2_resource_is_wl_drm_buffer(struct wlr_renderer *wlr_renderer,
+ 		struct wl_resource *resource) {
++#ifndef __ANDROID__
+ 	struct wlr_gles2_renderer *renderer = gles2_get_renderer(wlr_renderer);
+-
+ 	if (!eglQueryWaylandBufferWL) {
+ 		return false;
+ 	}
+@@ -232,19 +232,25 @@ static bool gles2_resource_is_wl_drm_buffer(struct wlr_renderer *wlr_renderer,
+ 	EGLint fmt;
+ 	return eglQueryWaylandBufferWL(renderer->egl->display, resource,
+ 		EGL_TEXTURE_FORMAT, &fmt);
++#else
++	return false;
++#endif // __ANDROID__
+ }
+ 
+ static void gles2_wl_drm_buffer_get_size(struct wlr_renderer *wlr_renderer,
+ 		struct wl_resource *buffer, int *width, int *height) {
++#ifndef __ANDROID__
+ 	struct wlr_gles2_renderer *renderer =
+ 		gles2_get_renderer(wlr_renderer);
+-
+ 	if (!eglQueryWaylandBufferWL) {
+ 		return;
+ 	}
+ 
+ 	eglQueryWaylandBufferWL(renderer->egl->display, buffer, EGL_WIDTH, width);
+ 	eglQueryWaylandBufferWL(renderer->egl->display, buffer, EGL_HEIGHT, height);
++#else
++	return;
++#endif // __ANDROID__
+ }
+ 
+ static const struct wlr_drm_format_set *gles2_get_dmabuf_formats(
+diff --git a/render/gles2/texture.c b/render/gles2/texture.c
+index 5f982e2c..0e01fa9f 100644
+--- a/render/gles2/texture.c
++++ b/render/gles2/texture.c
+@@ -219,11 +219,13 @@ struct wlr_texture *wlr_gles2_texture_from_wl_drm(struct wlr_egl *egl,
+ 		texture->type = WLR_GLES2_TEXTURE_WL_DRM_GL;
+ 		texture->has_alpha = fmt == EGL_TEXTURE_RGBA;
+ 		break;
++#ifndef __ANDROID__
+ 	case EGL_TEXTURE_EXTERNAL_WL:
+ 		target = GL_TEXTURE_EXTERNAL_OES;
+ 		texture->type = WLR_GLES2_TEXTURE_WL_DRM_EXT;
+ 		texture->has_alpha = true;
+ 		break;
++#endif // __ANDROID__
+ 	default:
+ 		wlr_log(WLR_ERROR, "Invalid or unsupported EGL buffer format");
+ 		free(texture);
+diff --git a/rootston/input.c b/rootston/input.c
+index 757f1b35..a81def8f 100644
+--- a/rootston/input.c
++++ b/rootston/input.c
+@@ -3,8 +3,10 @@
+ #include <stdlib.h>
+ #include <time.h>
+ #include <wayland-server.h>
+-#include <wlr/backend/libinput.h>
+ #include <wlr/config.h>
++#if WLR_HAS_DRM_BACKEND
++#include <wlr/backend/libinput.h>
++#endif
+ #include <wlr/types/wlr_cursor.h>
+ #include <wlr/util/log.h>
+ #include <wlr/xcursor.h>
+@@ -69,6 +71,7 @@ static void handle_new_input(struct wl_listener *listener, void *data) {
+ 
+ 	roots_seat_add_device(seat, device);
+ 
++#if WLR_HAS_DRM_BACKEND
+ 	if (dc && wlr_input_device_is_libinput(device)) {
+ 		struct libinput_device *libinput_dev =
+ 			wlr_libinput_get_device_handle(device);
+@@ -79,6 +82,7 @@ static void handle_new_input(struct wl_listener *listener, void *data) {
+ 					LIBINPUT_CONFIG_TAP_ENABLED);
+ 		}
+ 	}
++#endif
+ }
+ 
+ struct roots_input *input_create(struct roots_server *server,
+diff --git a/rootston/meson.build b/rootston/meson.build
+index 853fecc8..ad0cf094 100644
+--- a/rootston/meson.build
++++ b/rootston/meson.build
+@@ -28,4 +28,5 @@ executable(
+ 	sources,
+ 	dependencies: [wlroots, wlr_protos, pixman],
+ 	build_by_default: get_option('rootston'),
++	install: true,
+ )
+diff --git a/rootston/output.c b/rootston/output.c
+index 66a43694..7dbb8d5a 100644
+--- a/rootston/output.c
++++ b/rootston/output.c
+@@ -646,12 +646,15 @@ void handle_new_output(struct wl_listener *listener, void *data) {
+ 		wlr_output_preferred_mode(wlr_output);
+ 	if (output_config) {
+ 		if (output_config->enable) {
++#if WLR_HAS_DRM_BACKEND
+ 			if (wlr_output_is_drm(wlr_output)) {
+ 				struct roots_output_mode_config *mode_config;
+ 				wl_list_for_each(mode_config, &output_config->modes, link) {
+ 					wlr_drm_connector_add_mode(wlr_output, &mode_config->info);
+ 				}
+-			} else if (!wl_list_empty(&output_config->modes)) {
++			} else 
++#endif
++			if (!wl_list_empty(&output_config->modes)) {
+ 				wlr_log(WLR_ERROR, "Can only add modes for DRM backend");
+ 			}
+ 
+diff --git a/rootston/seat.c b/rootston/seat.c
+index bd15a1b0..e0b143b2 100644
+--- a/rootston/seat.c
++++ b/rootston/seat.c
+@@ -1,12 +1,14 @@
+ #define _POSIX_C_SOURCE 200112L
+ #include <assert.h>
+-#include <libinput.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <time.h>
+ #include <wayland-server.h>
+-#include <wlr/backend/libinput.h>
+ #include <wlr/config.h>
++#if WLR_HAS_DRM_BACKEND
++#include <libinput.h>
++#include <wlr/backend/libinput.h>
++#endif
+ #include <wlr/types/wlr_data_device.h>
+ #include <wlr/types/wlr_idle.h>
+ #include <wlr/types/wlr_layer_shell_v1.h>
+@@ -1061,6 +1063,7 @@ static void seat_add_tablet_pad(struct roots_seat *seat,
+ 	tablet_pad->tablet_v2_pad =
+ 		wlr_tablet_pad_create(desktop->tablet_v2, seat->seat, device);
+ 
++#if WLR_HAS_DRM_BACKEND
+ 	/* Search for a sibling tablet */
+ 	if (!wlr_input_device_is_libinput(device)) {
+ 		/* We can only do this on libinput devices */
+@@ -1082,6 +1085,7 @@ static void seat_add_tablet_pad(struct roots_seat *seat,
+ 			break;
+ 		}
+ 	}
++#endif
+ }
+ 
+ static void handle_tablet_destroy(struct wl_listener *listener,
+@@ -1124,6 +1128,7 @@ static void seat_add_tablet_tool(struct roots_seat *seat,
+ 	tablet->tablet_v2 =
+ 		wlr_tablet_create(desktop->tablet_v2, seat->seat, device);
+ 
++#if WLR_HAS_DRM_BACKEND
+ 	struct libinput_device_group *group =
+ 		libinput_device_get_device_group(wlr_libinput_get_device_handle(device));
+ 	struct roots_tablet_pad *pad;
+@@ -1138,6 +1143,7 @@ static void seat_add_tablet_tool(struct roots_seat *seat,
+ 			attach_tablet_pad(pad, tablet);
+ 		}
+ 	}
++#endif
+ }
+ 
+ void roots_seat_add_device(struct roots_seat *seat,
+diff --git a/types/wlr_linux_dmabuf_v1.c b/types/wlr_linux_dmabuf_v1.c
+index 19eab3f1..e12cb1ba 100644
+--- a/types/wlr_linux_dmabuf_v1.c
++++ b/types/wlr_linux_dmabuf_v1.c
+@@ -207,7 +207,7 @@ static void params_create_common(struct wl_client *client,
+ 			// Skip checks if kernel does no support seek on buffer
+ 			continue;
+ 		}
+-		if (buffer->attributes.offset[i] > size) {
++		if (buffer->attributes.offset[i] > (uint32_t) size) {
+ 			wl_resource_post_error(params_resource,
+ 				ZWP_LINUX_BUFFER_PARAMS_V1_ERROR_OUT_OF_BOUNDS,
+ 				"invalid offset %i for plane %d",
+@@ -215,7 +215,7 @@ static void params_create_common(struct wl_client *client,
+ 			goto err_out;
+ 		}
+ 
+-		if (buffer->attributes.offset[i] + buffer->attributes.stride[i] > size ||
++		if (buffer->attributes.offset[i] + buffer->attributes.stride[i] > (uint32_t) size ||
+ 				buffer->attributes.stride[i] == 0) {
+ 			wl_resource_post_error(params_resource,
+ 				ZWP_LINUX_BUFFER_PARAMS_V1_ERROR_OUT_OF_BOUNDS,
+@@ -226,7 +226,7 @@ static void params_create_common(struct wl_client *client,
+ 
+ 		// planes > 0 might be subsampled according to fourcc format
+ 		if (i == 0 && buffer->attributes.offset[i] +
+-				buffer->attributes.stride[i] * height > size) {
++				buffer->attributes.stride[i] * height > (uint32_t) size) {
+ 			wl_resource_post_error(params_resource,
+ 				ZWP_LINUX_BUFFER_PARAMS_V1_ERROR_OUT_OF_BOUNDS,
+ 				"invalid buffer stride or height for plane %d", i);
+diff --git a/util/shm.c b/util/shm.c
+index f7c7303e..90abd80c 100644
+--- a/util/shm.c
++++ b/util/shm.c
+@@ -8,6 +8,12 @@
+ #include <wlr/config.h>
+ #include "util/shm.h"
+ 
++#ifdef __ANDROID__
++#define __u32 uint32_t
++#include <linux/ashmem.h>
++#include <sys/syscall.h>
++#endif
++
+ static void randname(char *buf) {
+ 	struct timespec ts;
+ 	clock_gettime(CLOCK_REALTIME, &ts);
+@@ -18,6 +24,7 @@ static void randname(char *buf) {
+ 	}
+ }
+ 
++#ifndef __ANDROID__
+ int create_shm_file(void) {
+ 	int retries = 100;
+ 	do {
+@@ -53,3 +60,25 @@ int allocate_shm_file(size_t size) {
+ 
+ 	return fd;
+ }
++
++#else 
++
++int allocate_shm_file(size_t size) {
++	char name[] = "wlroots-XXXXXX";
++	randname(name + strlen(name) - 6);
++
++	int fd = open("/dev/ashmem", O_RDWR);
++	if (fd < 0) goto fail;
++
++	int ret = ioctl(fd, ASHMEM_SET_NAME, name);
++	if (ret < 0) goto fail;
++	ret = ioctl(fd, ASHMEM_SET_SIZE, size);
++	if (ret < 0) goto fail;
++
++	return fd;
++fail:
++	if (fd != -1) close(fd);
++	return -1;
++}
++
++#endif
