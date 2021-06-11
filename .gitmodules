@@ -7,3 +7,15 @@
 [submodule "external_repos/expat/libexpat"]
 	path = external_repos/expat/libexpat
 	url = https://github.com/libexpat/libexpat.git
+[submodule "external_repos/libxml2/libxml2"]
+	path = external_repos/libxml2/libxml2
+	url = https://github.com/GNOME/libxml2.git
+[submodule "external_repos/liblzma/xz"]
+	path = external_repos/liblzma/xz
+	url = https://git.tukaani.org/xz.git
+[submodule "external_repos/zlib/zlib"]
+	path = external_repos/zlib/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "external_repos/openssl/openssl"]
+	path = external_repos/openssl/openssl
+	url = https://github.com/openssl/openssl.git
