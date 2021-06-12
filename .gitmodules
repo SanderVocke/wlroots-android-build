@@ -25,3 +25,9 @@
 [submodule "external_repos/wayland-protocols/wayland-protocols"]
 	path = external_repos/wayland-protocols/wayland-protocols
 	url = https://github.com/wayland-project/wayland-protocols.git
+[submodule "external_repos/xkbcommon/libxkbcommon"]
+	path = external_repos/xkbcommon/libxkbcommon
+	url = https://github.com/xkbcommon/libxkbcommon.git
+[submodule "external_repos/libdrm/mesa-drm"]
+	path = external_repos/libdrm/mesa-drm
+	url = https://github.com/freedesktop/mesa-drm.git

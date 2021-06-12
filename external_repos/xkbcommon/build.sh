@@ -21,49 +21,6 @@ done
 # Also include the .pc files from any packages we already built into
 # the artifacts folder.
 cp ${ARTIFACTS}/lib/pkgconfig/*.pc ${PKGCONFIG_DIR}
-cp ${ARTIFACTS}/share/pkgconfig/*.pc ${PKGCONFIG_DIR}
-
-# Also manually create pkgconfigs for Android sysroot dependencies
-cat > generated/pkgconfig-dir/egl.pc <<- EOF
-prefix=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/
-exec_prefix=\${prefix}
-libdir=\${exec_prefix}/lib/${ANDROID_TARGET}/${ANDROID_API}/
-includedir=\${prefix}/include
-
-Name: EGL
-Description: Generated dependency to point to Android EGL
-Version: 1.0
-Libs: -L\${libdir} -lEGL
-Cflags: -I\${includedir}
-EOF
-cat > generated/pkgconfig-dir/glesv2.pc <<- EOF
-prefix=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/
-exec_prefix=\${prefix}
-libdir=\${exec_prefix}/lib/${ANDROID_TARGET}/${ANDROID_API}/
-includedir=\${prefix}/include
-
-Name: GLESv2
-Description: Generated dependency to point to Android EGL
-Version: 1.0
-Libs: -L\${libdir} -lGLESv2
-Cflags: -I\${includedir}
-EOF
-
-# Create a faux .pc for libdrm, which will only be used to find
-# some header files.
-cat > generated/pkgconfig-dir/libdrm.pc <<- EOF
-prefix=${SCRIPT_DIR}/../libdrm/mesa-drm
-includedir=\${prefix}/include/drm
-includedir2=\${prefix}
-exec_prefix=\${prefix}
-libdir=\${prefix}
-
-Name: libdrm
-Description: Generated dependency to point to libdrm headers
-Version: 2.4.106
-Libs:
-Cflags: -I\${includedir} -I\${includedir2}
-EOF
 
 # Replace paths with the ones to your NDK tools
 mkdir -p generated
@@ -90,21 +47,13 @@ cpu = '${ANDROID_ARCH}'
 endian = 'little'
 EOF
 
-# Copy the repo and apply a patch
-if [ ! -d generated/wlroots ]; then
-    cp -r wlroots generated/wlroots
-    pushd generated/wlroots
-    patch -p1 < ${SCRIPT_DIR}/android.patch
-    popd
-fi
-
-mkdir -p ${SCRIPT_DIR}/build
-
-pushd generated/wlroots
+pushd libxkbcommon
+mkdir -p build
 meson --cross-file=${SCRIPT_DIR}/generated/meson.crossfile \
     -Dprefix=${ARTIFACTS} \
-    ${SCRIPT_DIR}/build
+    -Denable-x11=false \
+    ../build/
 popd
 
 ninja -C build/
-#ninja -C build/ install
+ninja -C build/ install
