@@ -10,12 +10,12 @@ PREBUILT=${SCRIPT_DIR}/../../prebuilt/${ANDROID_ARCH}
 # to their prefix.
 # Unfortunately there is no way to set --define-prefix as a pkgconfig argument
 # via Meson, which would be a lot easier.
-BASE_PKGCONFIG_DIR=../../prebuilt/${ANDROID_ARCH}/usr/lib/pkgconfig
-PKGCONFIG_DIR=${SCRIPT_DIR}/generated/pkgconfig-dir
+BASE_PKGCONFIG_DIR=../../prebuilt/${ANDROID_ARCH}/lib/pkgconfig
+PKGCONFIG_DIR=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/pkgconfig-dir
 mkdir -p ${PKGCONFIG_DIR}
 ESCAPED_PREBUILT="${PREBUILT//\//\\/}"
 for f in ${BASE_PKGCONFIG_DIR}/*.pc; do
-    sed "s/^prefix=.*/prefix=${ESCAPED_PREBUILT}\/usr/g" ${BASE_PKGCONFIG_DIR}/$(basename ${f}) > ${PKGCONFIG_DIR}/$(basename ${f})
+    sed "s/^prefix=.*/prefix=${ESCAPED_PREBUILT}/g" ${BASE_PKGCONFIG_DIR}/$(basename ${f}) > ${PKGCONFIG_DIR}/$(basename ${f})
 done
 
 # Also include the .pc files from any packages we already built into
@@ -23,8 +23,8 @@ done
 cp ${ARTIFACTS}/lib/pkgconfig/*.pc ${PKGCONFIG_DIR}
 
 # Replace paths with the ones to your NDK tools
-mkdir -p generated
-cat > generated/meson.crossfile <<- EOF
+mkdir -p generated/${ANDROID_ARCH}
+cat > generated/${ANDROID_ARCH}/meson.crossfile <<- EOF
 [binaries]
 c = '$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/${ARCH_LONG}-clang'
 cpp = '$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/${ARCH_LONG}-clang++'
@@ -48,9 +48,9 @@ endian = 'little'
 EOF
 
 pushd wayland-protocols
-mkdir -p build
-CXXFLAGS=-I${ARTIFACTS}/include meson --cross-file=${SCRIPT_DIR}/generated/meson.crossfile -Dprefix=${ARTIFACTS} ../build/
+mkdir -p build/${ANDROID_ARCH}
+CXXFLAGS=-I${ARTIFACTS}/include meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile -Dprefix=${ARTIFACTS} ../build/${ANDROID_ARCH}
 popd
 
-ninja -C build/
-ninja -C build/ install
+ninja -C build/${ANDROID_ARCH}
+ninja -C build/${ANDROID_ARCH} install

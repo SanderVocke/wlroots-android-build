@@ -1,1 +1,0 @@
-These files were obtained and extracted from the Termux packages repository.

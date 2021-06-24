@@ -10,12 +10,12 @@ PREBUILT=${SCRIPT_DIR}/../../prebuilt/${ANDROID_ARCH}
 # to their prefix.
 # Unfortunately there is no way to set --define-prefix as a pkgconfig argument
 # via Meson, which would be a lot easier.
-BASE_PKGCONFIG_DIR=../../prebuilt/${ANDROID_ARCH}/usr/lib/pkgconfig
-PKGCONFIG_DIR=${SCRIPT_DIR}/generated/pkgconfig-dir
+BASE_PKGCONFIG_DIR=../../prebuilt/${ANDROID_ARCH}/lib/pkgconfig
+PKGCONFIG_DIR=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/pkgconfig-dir
 mkdir -p ${PKGCONFIG_DIR}
 ESCAPED_PREBUILT="${PREBUILT//\//\\/}"
 for f in ${BASE_PKGCONFIG_DIR}/*.pc; do
-    sed "s/^prefix=.*/prefix=${ESCAPED_PREBUILT}\/usr/g" ${BASE_PKGCONFIG_DIR}/$(basename ${f}) > ${PKGCONFIG_DIR}/$(basename ${f})
+    sed "s/^prefix=.*/prefix=${ESCAPED_PREBUILT}/g" ${BASE_PKGCONFIG_DIR}/$(basename ${f}) > ${PKGCONFIG_DIR}/$(basename ${f})
 done
 
 # Also include the .pc files from any packages we already built into
@@ -24,7 +24,7 @@ cp ${ARTIFACTS}/lib/pkgconfig/*.pc ${PKGCONFIG_DIR}
 cp ${ARTIFACTS}/share/pkgconfig/*.pc ${PKGCONFIG_DIR}
 
 # Also manually create pkgconfigs for Android sysroot dependencies
-cat > generated/pkgconfig-dir/egl.pc <<- EOF
+cat > generated/${ANDROID_ARCH}/pkgconfig-dir/egl.pc <<- EOF
 prefix=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/
 exec_prefix=\${prefix}
 libdir=\${exec_prefix}/lib/${ANDROID_TARGET}/${ANDROID_API}/
@@ -36,7 +36,7 @@ Version: 1.0
 Libs: -L\${libdir} -lEGL
 Cflags: -I\${includedir}
 EOF
-cat > generated/pkgconfig-dir/glesv2.pc <<- EOF
+cat > generated/${ANDROID_ARCH}/pkgconfig-dir/glesv2.pc <<- EOF
 prefix=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/
 exec_prefix=\${prefix}
 libdir=\${exec_prefix}/lib/${ANDROID_TARGET}/${ANDROID_API}/
@@ -51,7 +51,7 @@ EOF
 
 # Create a faux .pc for libdrm, which will only be used to find
 # some header files.
-cat > generated/pkgconfig-dir/libdrm.pc <<- EOF
+cat > generated/${ANDROID_ARCH}/pkgconfig-dir/libdrm.pc <<- EOF
 prefix=${SCRIPT_DIR}/../libdrm/mesa-drm
 includedir=\${prefix}/include/drm
 includedir2=\${prefix}
@@ -66,8 +66,8 @@ Cflags: -I\${includedir} -I\${includedir2}
 EOF
 
 # Replace paths with the ones to your NDK tools
-mkdir -p generated
-cat > generated/meson.crossfile <<- EOF
+mkdir -p generated/${ANDROID_ARCH}
+cat > generated/${ANDROID_ARCH}/meson.crossfile <<- EOF
 [binaries]
 c = '$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/${ARCH_LONG}-clang'
 cpp = '$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/${ARCH_LONG}-clang++'
@@ -91,20 +91,20 @@ endian = 'little'
 EOF
 
 # Copy the repo and apply a patch
-if [ ! -d generated/wlroots ]; then
-    cp -r wlroots generated/wlroots
-    pushd generated/wlroots
+if [ ! -d generated/${ANDROID_ARCH}/wlroots ]; then
+    cp -r wlroots generated/${ANDROID_ARCH}/wlroots
+    pushd generated/${ANDROID_ARCH}/wlroots
     patch -p1 < ${SCRIPT_DIR}/android.patch
     popd
 fi
 
-mkdir -p ${SCRIPT_DIR}/build
+mkdir -p ${SCRIPT_DIR}/build/${ANDROID_ARCH}
 
-pushd generated/wlroots
-meson --cross-file=${SCRIPT_DIR}/generated/meson.crossfile \
+pushd generated/${ANDROID_ARCH}/wlroots
+meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile \
     -Dprefix=${ARTIFACTS} \
-    ${SCRIPT_DIR}/build
+    ${SCRIPT_DIR}/build/${ANDROID_ARCH}
 popd
 
-ninja -C build/
-ninja -C build/ install
+ninja -C build/${ANDROID_ARCH}
+ninja -C build/${ANDROID_ARCH} install

@@ -1,4 +1,4 @@
 export ANDROID_ARCH=aarch64
 export ANDROID_TARGET=${ANDROID_ARCH}-linux-android
-export ANDROID_API=24
+export ANDROID_API=26
 export ANDROID_NDK=/home/sander/Android/Sdk/ndk/23.0.7272597
