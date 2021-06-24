@@ -21,6 +21,7 @@ done
 # Also include the .pc files from any packages we already built into
 # the artifacts folder.
 cp ${ARTIFACTS}/lib/pkgconfig/*.pc ${PKGCONFIG_DIR}
+cp ${ARTIFACTS}/share/pkgconfig/*.pc ${PKGCONFIG_DIR}
 
 # Replace paths with the ones to your NDK tools
 mkdir -p generated

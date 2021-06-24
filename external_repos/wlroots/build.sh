@@ -107,4 +107,4 @@ meson --cross-file=${SCRIPT_DIR}/generated/meson.crossfile \
 popd
 
 ninja -C build/
-#ninja -C build/ install
+ninja -C build/ install
