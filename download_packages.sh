@@ -49,18 +49,24 @@ for package in ${PACKAGES}; do
     echo "  - architectures: ${ALL_ARCHS}"
 
     for arch in ${ALL_ARCHS}; do
+        if [ "$arch" = "arm" ]; then
+            store_arch="armv7a"
+        else
+            store_arch=$arch
+        fi
+
         FILENAME="${package}_${LATEST_VERSION}_${arch}.deb"
         wget -q -O /tmp/${FILENAME} "${PACKAGE_VERSION_LIST_URL}/${FILENAME}"
 
-        mkdir -p ${SCRIPT_DIR}/prebuilt/${arch}
+        mkdir -p ${SCRIPT_DIR}/prebuilt/${store_arch}
         mkdir -p /tmp/${FILENAME}.dir/
         dpkg-deb --extract /tmp/${FILENAME} /tmp/${FILENAME}.dir
 
-        cp -r /tmp/${FILENAME}.dir/data/data/com.termux/files/usr/* ${SCRIPT_DIR}/prebuilt/${arch}/
+        cp -r /tmp/${FILENAME}.dir/data/data/com.termux/files/usr/* ${SCRIPT_DIR}/prebuilt/${store_arch}/
 
         rm -r /tmp/${FILENAME} /tmp/${FILENAME}.dir
 
         # Fix hard-coded Termux paths in Pkgconfig files.
-        sed -i 's/\/data\/data\/com\.termux\/files\/usr/${prefix}/g' ${SCRIPT_DIR}/prebuilt/${arch}/lib/pkgconfig/*.pc
+        sed -i 's/\/data\/data\/com\.termux\/files\/usr/${prefix}/g' ${SCRIPT_DIR}/prebuilt/${store_arch}/lib/pkgconfig/*.pc
     done
 done

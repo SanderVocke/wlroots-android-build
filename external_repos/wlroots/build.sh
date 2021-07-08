@@ -2,7 +2,11 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-ARCH_LONG=${ANDROID_TARGET}${ANDROID_API}
+if [ "$ANDROID_ARCH" = "armv7a" ]; then
+    ARCH_LONG=${ANDROID_TARGET}eabi${ANDROID_API}
+else
+    ARCH_LONG=${ANDROID_TARGET}${ANDROID_API}
+fi
 ARTIFACTS=${SCRIPT_DIR}/../../artifacts/${ANDROID_ARCH}
 PREBUILT=${SCRIPT_DIR}/../../prebuilt/${ANDROID_ARCH}
 
