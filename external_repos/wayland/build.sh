@@ -53,7 +53,9 @@ EOF
 
 pushd wayland
 mkdir -p build/${ANDROID_ARCH}
-meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile -Dprefix=${ARTIFACTS} ../build/${ANDROID_ARCH}
+meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile \
+    -Dprefix=${ARTIFACTS} ../build/${ANDROID_ARCH} \
+    $@
 popd
 
 ninja -C build/${ANDROID_ARCH}

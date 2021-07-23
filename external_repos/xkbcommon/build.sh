@@ -57,7 +57,8 @@ mkdir -p build
 meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile \
     -Dprefix=${ARTIFACTS} \
     -Denable-x11=false \
-    ../build/${ANDROID_ARCH}
+    ../build/${ANDROID_ARCH} \
+    $@
 popd
 
 ninja -C build/${ANDROID_ARCH}

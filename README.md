@@ -15,6 +15,8 @@ Usage:
     Termux packages were found. ANDROID_ARCH does not need to be set in this case.
   - Run build.sh in the top-level directory to build for a specific ANDROID_ARCH.
   - Run the build.sh scripts in each external repository. Note that wlroots depends on wayland, wayland-protocols and xkbcommon, so build those first.
+- Note that any arguments passed to the build script will be forwarded to Meson, e.g. to choose
+  the build type.
 - Results are installed in the artifacts folder.
 
 Notes:

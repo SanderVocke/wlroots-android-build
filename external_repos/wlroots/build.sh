@@ -107,7 +107,8 @@ mkdir -p ${SCRIPT_DIR}/build/${ANDROID_ARCH}
 pushd generated/${ANDROID_ARCH}/wlroots
 meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile \
     -Dprefix=${ARTIFACTS} \
-    ${SCRIPT_DIR}/build/${ANDROID_ARCH}
+    ${SCRIPT_DIR}/build/${ANDROID_ARCH} \
+    $@
 popd
 
 ninja -C build/${ANDROID_ARCH}

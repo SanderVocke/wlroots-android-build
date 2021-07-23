@@ -12,6 +12,6 @@ for repo in ${REPOS}; do
     echo "Building ${repo} for ${ANDROID_ARCH}..."
     echo ""
     pushd "${repo}"
-    ./build.sh
+    ./build.sh $@
     popd
 done
