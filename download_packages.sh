@@ -9,6 +9,7 @@ libpixman \
 libexpat \
 libffi \
 zlib \
+libandroid-shmem
 "
 BASE_URL="https://packages.termux.org/apt/termux-main/pool/main"
 

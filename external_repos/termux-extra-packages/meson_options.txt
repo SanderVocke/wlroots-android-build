@@ -1,0 +1,1 @@
+option('posix_shm_version', type : 'string', value : 'optval', description : 'Package version for posix-shm')

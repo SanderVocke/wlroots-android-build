@@ -10,22 +10,6 @@ fi
 ARTIFACTS=${SCRIPT_DIR}/../../artifacts/${ANDROID_ARCH}
 PREBUILT=${SCRIPT_DIR}/../../prebuilt/${ANDROID_ARCH}
 
-# We have to patch the pkgconfig files to prepend our path
-# to their prefix.
-# Unfortunately there is no way to set --define-prefix as a pkgconfig argument
-# via Meson, which would be a lot easier.
-BASE_PKGCONFIG_DIR=../../prebuilt/${ANDROID_ARCH}/lib/pkgconfig
-PKGCONFIG_DIR=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/pkgconfig-dir
-mkdir -p ${PKGCONFIG_DIR}
-ESCAPED_PREBUILT="${PREBUILT//\//\\/}"
-for f in ${BASE_PKGCONFIG_DIR}/*.pc; do
-    sed "s/^prefix=.*/prefix=${ESCAPED_PREBUILT}/g" ${BASE_PKGCONFIG_DIR}/$(basename ${f}) > ${PKGCONFIG_DIR}/$(basename ${f})
-done
-
-# Also include the .pc files from any packages we already built into
-# the artifacts folder.
-cp ${ARTIFACTS}/lib/pkgconfig/*.pc ${PKGCONFIG_DIR}
-
 # Replace paths with the ones to your NDK tools
 mkdir -p generated/${ANDROID_ARCH}
 cat > generated/${ANDROID_ARCH}/meson.crossfile <<- EOF
@@ -51,13 +35,14 @@ cpu = '${ANDROID_ARCH}'
 endian = 'little'
 EOF
 
-mkdir -p build/${ANDROID_ARCH}
+POSIX_SHM_PACKAGE_VERSION=$(source $SCRIPT_DIR/termux-extra-packages/packages/libposix-shm/build.sh && echo $TERMUX_PKG_VERSION)
 
-pushd wayland
+mkdir -p build
 meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile \
-    -Dprefix=${ARTIFACTS} ../build/${ANDROID_ARCH} \
+    -Dprefix=${ARTIFACTS} \
+    -Dposix_shm_version=${POSIX_SHM_PACKAGE_VERSION} \
+    ${SCRIPT_DIR}/build/${ANDROID_ARCH} \
     $@
-popd
 
 ninja -C build/${ANDROID_ARCH}
 ninja -C build/${ANDROID_ARCH} install

@@ -21,7 +21,7 @@
 	url = https://github.com/openssl/openssl.git
 [submodule "external_repos/wlroots/wlroots"]
 	path = external_repos/wlroots/wlroots
-	url = https://github.com/swaywm/wlroots.git
+	url = https://gitea.octiron.soleus.nu/sander/wlroots.git
 [submodule "external_repos/wayland-protocols/wayland-protocols"]
 	path = external_repos/wayland-protocols/wayland-protocols
 	url = https://github.com/wayland-project/wayland-protocols.git

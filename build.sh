@@ -2,7 +2,8 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
-REPOS="${SCRIPT_DIR}/external_repos/wayland \
+REPOS="${SCRIPT_DIR}/external_repos/termux-extra-packages \
+${SCRIPT_DIR}/external_repos/wayland \
 ${SCRIPT_DIR}/external_repos/wayland-protocols \
 ${SCRIPT_DIR}/external_repos/xkbcommon \
 ${SCRIPT_DIR}/external_repos/wlroots"

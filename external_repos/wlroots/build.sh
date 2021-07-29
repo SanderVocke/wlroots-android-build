@@ -95,16 +95,16 @@ endian = 'little'
 EOF
 
 # Copy the repo and apply a patch
-if [ ! -d generated/${ANDROID_ARCH}/wlroots ]; then
-    cp -r wlroots generated/${ANDROID_ARCH}/wlroots
-    pushd generated/${ANDROID_ARCH}/wlroots
-    patch -p1 < ${SCRIPT_DIR}/android.patch
-    popd
-fi
+# if [ ! -d generated/${ANDROID_ARCH}/wlroots ]; then
+#     cp -r wlroots generated/${ANDROID_ARCH}/wlroots
+#     pushd generated/${ANDROID_ARCH}/wlroots
+#     #patch -p1 < ${SCRIPT_DIR}/android.patch
+#     popd
+# fi
 
 mkdir -p ${SCRIPT_DIR}/build/${ANDROID_ARCH}
 
-pushd generated/${ANDROID_ARCH}/wlroots
+pushd wlroots
 meson --cross-file=${SCRIPT_DIR}/generated/${ANDROID_ARCH}/meson.crossfile \
     -Dprefix=${ARTIFACTS} \
     ${SCRIPT_DIR}/build/${ANDROID_ARCH} \
