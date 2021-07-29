@@ -31,3 +31,6 @@
 [submodule "external_repos/libdrm/mesa-drm"]
 	path = external_repos/libdrm/mesa-drm
 	url = https://github.com/freedesktop/mesa-drm.git
+[submodule "external_repos/termux-extra-packages/termux-extra-packages"]
+	path = external_repos/termux-extra-packages/termux-extra-packages
+	url = https://github.com/Neo-Oli/termux-extra-packages.git
