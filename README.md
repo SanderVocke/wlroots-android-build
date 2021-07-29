@@ -1,5 +1,12 @@
 This repository has a cross-compiling environment for building wlroots and its dependencies for Android with an Android NDK.
 
+Important: For now I am using this to build a fork of wlroots which has some modifications. It is hosted on a private server for now, so you may
+not be able to checkout the wlroots submodule. You can still get a version that builds:
+- For the wlroots submodule: check out version 0.6.0 from the official wlroots repo.
+- Apply the patch by twaik from his Gist: https://gist.github.com/twaik/50b82028a0bd3192bec4d98b9ae522a6
+
+
+
 There is no original code here except the build scripts. Other than that it is a collection of work by others:
 - Submodules for wlroots and several of its dependencies
 - Other dependencies extracted from Termux packages
